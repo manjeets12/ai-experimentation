@@ -44,6 +44,8 @@ npx expo start
 ```
 *(Note: Expo is being used in this project due to memory constraints on the development laptop, allowing for easier testing and compilation.)*
 
+You can use the **Expo Go** app to run this project directly on your physical mobile phone. Download it here: [https://expo.dev/go](https://expo.dev/go) and scan the QR code generated in your terminal!
+
 ---
 
 ## Architecture & Technical Decisions
