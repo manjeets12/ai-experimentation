@@ -43,7 +43,8 @@ export const ChatScreen = () => {
     openDrawer,
     closeDrawer,
     showScrollToBottom,
-    scrollToBottom
+    scrollToBottom,
+    onContentSizeChange
   } = useChatLogics({});
 
   const renderListFooter = useCallback(() => {
@@ -134,7 +135,7 @@ export const ChatScreen = () => {
         ListEmptyComponent={renderEmptyState}
         ItemSeparatorComponent={Separator}
         contentContainerStyle={[styles.chatList, messages.length === 0 && { flexGrow: 1 }]}
-        //onContentSizeChange={onContentSizeChange}
+        onContentSizeChange={onContentSizeChange}
         onScroll={onListScroll}
         scrollEventThrottle={16}
       />
@@ -167,9 +168,12 @@ export const ChatScreen = () => {
               onChangeText={setInputText}
               containerStyle={styles.input}
               inputWrapperStyle={styles.inputWrapper}
-              editable={!isBusy}
+              //editable={!isBusy}
+              submitBehavior='blurAndSubmit'
+              onSubmitEditing={handleSend}
+              returnKeyType="send"
             />
-            {isBusy ? (
+            {isBusy && inputText.trim() === "" ? (
               <CIconButton
                 iconName="stop"
                 variant="ghost"

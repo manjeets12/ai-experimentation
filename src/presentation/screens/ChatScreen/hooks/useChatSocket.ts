@@ -12,6 +12,22 @@ function getLocalId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * `useChatSocket` acts as the network and transport layer for the chat interface.
+ * 
+ * It manages the WebSocket connection to the backend, handles the initial handshake,
+ * and processes real-time streaming events ("start", "chunk", "done", "error").
+ * 
+ * Key Responsibilities:
+ * - Connection Lifecycle: Automatically connects to the WebSocket, handles reconnects,
+ *   and manages the `isReady` state after a successful handshake (`"ack"`).
+ * - Stream State Management: Tracks whether the AI is currently "idle", "thinking",
+ *   or "streaming" (`streamState`), which directly powers the UI's typing indicators.
+ * - Event Broadcasting: Emits `scroll_for_new_chat` events locally via `appEventEmitter`
+ *   to tell the UI to smoothly scroll down as chunks arrive (every `SCROLL_THRESHOLD_CHARS`).
+ * - Message Orchestration: Delegates the actual text buffering to `useTextBuffer`, 
+ *   serving as the bridge between raw WebSocket frames and the smooth rendering hook.
+ */
 export const useChatSocket = (url: string = WS_URL) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -20,14 +36,23 @@ export const useChatSocket = (url: string = WS_URL) => {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
+  const handleComplete = useCallback(() => {
+    Vibration.vibrate(50);
+    appEventEmitter.emit('scroll_for_new_chat');
+    charsSinceLastScroll.current = 0;
+    setStreamState({ phase: "idle" });
+
+  }, []);
+
   const {
     createAssistantPlaceholder,
     append,
-    flushNow,
+    markDoneDraining,
+    interrupt,
     cancel: cancelBuffer,
     fail,
     getActiveAssistantId,
-  } = useTextBuffer(setMessages);
+  } = useTextBuffer(setMessages, handleComplete);
 
   const ws = useRef<WebSocket | null>(null);
   const charsSinceLastScroll = useRef(0);
@@ -81,11 +106,7 @@ export const useChatSocket = (url: string = WS_URL) => {
           }
 
           case "done": {
-            flushNow();
-            setStreamState({ phase: "idle" });
-            Vibration.vibrate(50);
-            appEventEmitter.emit('scroll_for_new_chat');
-            charsSinceLastScroll.current = 0;
+            markDoneDraining();
             break;
           }
 
@@ -132,8 +153,8 @@ export const useChatSocket = (url: string = WS_URL) => {
         return;
       }
 
-      // cancel any existing local active stream state first
-      cancelBuffer();
+      // cancel or flush any existing local active stream state first
+      interrupt();
 
       if (!isRetry) {
         setMessages((prev) => [
@@ -164,7 +185,7 @@ export const useChatSocket = (url: string = WS_URL) => {
         })
       );
     },
-    [isReady, createAssistantPlaceholder, cancelBuffer]
+    [isReady, createAssistantPlaceholder, interrupt]
   );
 
   const cancel = useCallback(

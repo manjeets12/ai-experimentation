@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo, useCallback, use } from "react";
-import { FlatList, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
+import { FlatList, NativeScrollEvent, NativeSyntheticEvent, Keyboard } from "react-native";
 import { useChatSocket } from "./useChatSocket";
 import chatService from "@/services/network/chatService";
 import type { ChatMessage, Conversation } from "../types";
@@ -9,6 +9,24 @@ type UseChatLogicsProps = {
     conversationId?: string;
 };
 
+/**
+ * `useChatLogics` is the central "Brain" (Controller) of the Chat Screen.
+ * 
+ * It bridges the gap between the network layer (`useChatSocket`), the persistent storage layer
+ * (`chatService`), and the React UI components. It aggregates all data and handles user interactions.
+ * 
+ * Key Responsibilities:
+ * - Data Aggregation: Merges historical messages (`fetchedMessages`) with real-time incoming 
+ *   messages (`liveMessages`) into a single, seamless array for the UI. It also efficiently
+ *   calculates the `isLast` flag dynamically without breaking React object references.
+ * - Scroll Management: Intelligently tracks user scroll intent (`isUserScrolledUp`). It auto-scrolls
+ *   to the bottom during streaming, but gracefully avoids hijacking the scroll position if the user 
+ *   is currently reading older messages.
+ * - Interaction Handlers: Exposes UI handlers like `handleSend`, `handleStop`, and `handleRetry`,
+ *   safely managing interruptions and edge cases (e.g., cancelling an active stream to send a new message).
+ * - Drawer & History State: Manages the side-drawer visibility and triggers fetching of older 
+ *   conversation sessions when the user switches chats.
+ */
 const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
     const [fetchedMessages, setFetchedMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState("");
@@ -140,9 +158,14 @@ const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
     }, [conversationId]);
 
     const handleSend = useCallback(async () => {
-        if (isBusy) return;
         const text = inputText.trim();
         if (!text) return;
+
+        Keyboard.dismiss();
+
+        if (isBusy) {
+            handleStop();
+        }
 
         try {
             const id = await ensureConversation();
@@ -152,7 +175,7 @@ const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
         } catch (e) {
             console.error("Failed to send message:", e);
         }
-    }, [inputText, ensureConversation, sendMessage, isBusy]);
+    }, [inputText, ensureConversation, sendMessage, isBusy, handleStop, scrollToBottom]);
 
     const handleStop = useCallback(() => {
         if (!conversationId) return;
