@@ -1,50 +1,58 @@
-import 'react-native-reanimated';
-import { DarkTheme, DefaultTheme } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
-import * as React from 'react';
-import { useColorScheme } from 'react-native';
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { View, Text } from "react-native";
+import { ThemeProvider } from "./theme/ThemeProvider";
+import { ComponentShowcase } from "./presentation/components/ComponentShowcase";
+import { ChatScreen } from "./presentation/screens/ChatScreen";
 
-import { Colors } from './constants/Colors';
-import { Navigation } from './navigation';
+const Stack = createNativeStackNavigator();
 
-SplashScreen.preventAutoHideAsync();
-
-export function App() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('./assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
-
-  const theme =
-    colorScheme === 'dark'
-      ? {
-          ...DarkTheme,
-          colors: { ...DarkTheme.colors, primary: Colors[colorScheme ?? 'light'].tint },
-        }
-      : {
-          ...DefaultTheme,
-          colors: { ...DefaultTheme.colors, primary: Colors[colorScheme ?? 'light'].tint },
-        };
-
-  return (
-    <Navigation
-      theme={theme}
-      linking={{
-        enabled: 'auto',
-        prefixes: [
-          // Change the scheme to match your app's scheme defined in app.json
-          'helloworld://',
-        ],
-      }}
-      onReady={() => {
-        SplashScreen.hideAsync();
-      }}
+const ChatNavigator = () => (
+  <Stack.Navigator>
+    <Stack.Screen
+      name="Chat"
+      component={ChatScreen}
+      options={{ title: "AI Assistant", headerShown: false }}
     />
-  );
-}
+    <Stack.Screen
+      name="ComponentShowcase"
+      component={ComponentShowcase}
+      options={{ title: "Design System" }}
+    />
+    <Stack.Screen
+      name="Conversations"
+      component={() => (
+        <View>
+          <Text>Hi</Text>
+        </View>
+      )}
+    />
+    <Stack.Screen
+      name="ChatDetails"
+      component={() => (
+        <View>
+          <Text>Chat Details</Text>
+        </View>
+      )}
+    />
+  </Stack.Navigator>
+);
+
+const RootStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="ChatFlow" component={ChatNavigator} />
+  </Stack.Navigator>
+);
+
+const App = () => (
+  <ThemeProvider>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <RootStack />
+      </NavigationContainer>
+    </SafeAreaProvider>
+  </ThemeProvider>
+);
+
+export default App;

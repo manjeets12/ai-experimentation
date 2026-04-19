@@ -1,61 +1,73 @@
-# Starter Template with React Navigation
+# AI Chat Application
 
-This is a minimal starter template for React Native apps using Expo and React Navigation.
-
-## Launch your own
-
-[![Launch with Expo](https://github.com/expo/examples/blob/master/.gh-assets/launch.svg?raw=true)](https://launch.expo.dev/?github=https://github.com/expo/examples/tree/master/with-react-navigation)
-
-It includes the following:
-
-- Example [Native Stack](https://reactnavigation.org/docs/native-stack-navigator) with a nested [Bottom Tab](https://reactnavigation.org/docs/bottom-tab-navigator)
-- Web support with [React Native for Web](https://necolas.github.io/react-native-web/)
-- TypeScript support and configured for React Navigation
-- Automatic [deep link](https://reactnavigation.org/docs/deep-linking) and [URL handling configuration](https://reactnavigation.org/docs/configuring-links)
-- Theme support [based on system appearance](https://reactnavigation.org/docs/themes/#using-the-operating-system-preferences)
-- Expo [Development Build](https://docs.expo.dev/develop/development-builds/introduction/) with [Continuous Native Generation](https://docs.expo.dev/workflow/continuous-native-generation/)
-- Edge-to-edge configured on Android with [`react-native-edge-to-edge`](https://www.npmjs.com/package/react-native-edge-to-edge)
+A React Native AI Chat Application featuring real-time message streaming, typing indicators, and a robust frontend state management system.
 
 ## Getting Started
 
-1. Create a new project using this template:
+Follow these instructions to get the application running on your local machine.
 
-   ```sh
-   npx create-expo-app --example with-react-navigation
-   yarn create expo-app --example with-react-navigation
-   pnpm create expo-app --example with-react-navigation
-   bun create expo-app --example with-react-navigation
-   ```
+### 1. Start the Server
 
-## Running the app
+First, you need to start the mock chat server locally.
 
-- Install the dependencies:
+```bash
+cd server
+npm install
+npm run start
+```
+*(Note: The server must be running on your local machine for the app to function.)*
 
-  ```sh
-  npx expo install
-  ```
+### 2. Configure Local IP Address
 
-- Start the development server:
+To allow your mobile device or emulator to connect to the local server, you need to update the configuration with your machine's local IP address.
 
-  ```sh
-  npx expo start
-  ```
+**Find your IP Address:**
+- **Mac:** Run `ipconfig getifaddr en0` in your terminal (or `ipconfig getifaddr en1` if on Wi-Fi/Ethernet differently).
+- **Windows:** Run `ipconfig` and look for "IPv4 Address".
+- **Linux:** Run `hostname -I`.
 
-- Build and run iOS and Android development builds:
+Once you have your IP address, open `config.ts` in the root of the project and update the `IP_ADDRESS` variable:
 
-  ```sh
-  npm run ios
-  # or
-  npm run android
-  ```
+```typescript
+const IP_ADDRESS = "YOUR_IP_ADDRESS_HERE"; // Please update ip to run it on mobile
+```
 
-- In the terminal running the development server, press `i` to open the iOS simulator, `a` to open the Android device or emulator, or `w` to open the web browser.
+### 3. Start the Client App
 
-## Resources
+Return to the root directory of the project, install dependencies, and start the Expo development server.
 
-- [React Navigation documentation](https://reactnavigation.org/)
-- [Expo documentation](https://docs.expo.dev/)
+```bash
+# Assuming you are in the server directory
+cd ..
+npm install
+npx expo start
+```
+*(Note: Expo is being used in this project due to memory constraints on the development laptop, allowing for easier testing and compilation.)*
 
 ---
 
-Demo assets are from [lucide.dev](https://lucide.dev/)
+## Architecture & Technical Decisions
+
+This project incorporates several robust design patterns to handle real-time chat streaming smoothly on the frontend without relying on heavy backend modifications.
+
+### 1. AI-Driven UI & Design System
+Most of the UI components (Atoms, Molecules), the main Chat Screen, and the underlying Design System were generated and refined with the help of AI. This ensured a clean, modern, and consistent visual aesthetic across the application.
+
+### 2. Communication Flow & WebSockets
+**Flow:** Client sends a message -> Server receives the request -> Server streams mocked response chunks back via WebSocket.
+
+*Why WebSockets?* Due to Server-Sent Events (SSE) limitations and parsing constraints in certain React Native networking environments, we opted for WebSockets. This provides a highly stable, bidirectional, and real-time streaming pipeline for chat chunks.
+
+### 3. Typing Indicator & Text Buffering
+To simulate a smooth "typing" effect when receiving rapid message chunks from the server, we don't immediately render everything and overwhelm React's render cycle. Instead, we use a buffered approach:
+- Incoming chunks are appended to a lightweight `pendingRef` string buffer.
+- We use `requestAnimationFrame` (RAF) combined with a time threshold (`REVEAL_INTERVAL_MS = 50ms`) to periodically extract a few characters from the buffer and trigger a React state update (`setState`).
+- This batches React UI updates, prevents frame drops, and creates a highly performant, human-like typing animation without blocking the main UI thread.
+
+### 4. Cancel and Retry Mechanisms
+We built a unified "Global Stream Phase" state machine to handle interruptions gracefully:
+- **Cancel:** If a user stops a stream, a cancel event is fired, and the current message's status is locally updated to `"cancelled"`. Crucially, any "late" or "ghost" chunks that might arrive from the server afterward are safely ignored because the buffer locks them out.
+- **Retry:** If a stream fails or is cancelled, a visual "Retry" button appears. Clicking it traverses the local message history, identifies the original user prompt that preceded the failed message, and automatically re-initiates the `sendMessage` pipeline.
+
+### 5. Scroll Behavior
+To maintain a natural chat experience, the `FlatList` automatically tracks its scroll position. We calculate the `distanceFromBottom` whenever the list scrolls or its content size changes. If the user is currently reading near the bottom of the list (within an 80px threshold), the arrival of new streaming chunks will automatically trigger `scrollToEnd({ animated: true })`, ensuring the active conversation always remains visible.

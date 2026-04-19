@@ -6,11 +6,18 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
+      ],
+      "@config": [
+        "./config.ts"
       ]
     }
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "server/src/server.js"
   ]
 }
