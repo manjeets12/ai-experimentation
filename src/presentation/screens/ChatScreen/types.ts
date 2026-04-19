@@ -10,12 +10,14 @@ export type ChatMessage =
         id: string;
         role: "user";
         text: string;
+        isLast?: boolean;
     }
     | {
         id: string;
         role: "assistant";
         text: string;
         status?: "failed" | "cancelled" | "completed";
+        isLast?: boolean;
     };
 
 export type StreamState =

@@ -11,7 +11,7 @@ import { memo } from 'react'
  * @param param0 
  * @returns 
  */
-const ChatItem = ({ role, id, text, status, isStreaming, activeAssistantMessageId, onRetry, isLastMessage }: ChatMessage & { isStreaming: boolean, activeAssistantMessageId: string | null, onRetry?: (id: string) => void, isLastMessage?: boolean }) => {
+const ChatItem = ({ role, id, text, status, isStreaming, activeAssistantMessageId, onRetry, isLast }: ChatMessage & { isStreaming: boolean, activeAssistantMessageId: string | null, onRetry?: (id: string) => void, isLast?: boolean }) => {
     const isUser = role === "user";
     const isCancelled = status === "cancelled";
     const isFailed = status === "failed";
@@ -36,7 +36,7 @@ const ChatItem = ({ role, id, text, status, isStreaming, activeAssistantMessageI
                         <CText variant="caption" color="error">
                             {isCancelled ? "Cancelled by user." : "Message failed."}
                         </CText>
-                        {onRetry && isLastMessage && (
+                        {onRetry && isLast && (
                             <TouchableOpacity onPress={() => onRetry(id)} style={styles.retryButton}>
                                 <CText variant="caption" color="primary">Retry</CText>
                             </TouchableOpacity>

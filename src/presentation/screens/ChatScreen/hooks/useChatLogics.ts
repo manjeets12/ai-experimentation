@@ -120,7 +120,15 @@ const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
     }, [fetchError, connectionError, fetchHistory, retryConnection, conversationId]);
 
     const messages = useMemo(() => {
-        return [...fetchedMessages, ...liveMessages];
+        const combined = [...fetchedMessages, ...liveMessages];
+        const len = combined.length;
+        if (len === 0) return combined;
+
+        return combined.map((m, index) => {
+            const isLastNode = index === len - 1;
+            if (m.isLast === isLastNode) return m;
+            return { ...m, isLast: isLastNode };
+        });
     }, [fetchedMessages, liveMessages]);
 
     const ensureConversation = useCallback(async () => {

@@ -72,17 +72,16 @@ export const ChatScreen = () => {
     );
   }, [styles]);
 
-  const renderItem = useCallback(({ item, index }: { item: ChatMessage, index: number }) => {
+  const renderItem = useCallback(({ item }: { item: ChatMessage }) => {
     return (
       <ChatItem
         {...item}
         isStreaming={isStreaming}
         activeAssistantMessageId={activeAssistantMessageId}
         onRetry={handleRetry}
-        isLastMessage={index === messages.length - 1}
       />
     );
-  }, [isStreaming, activeAssistantMessageId, handleRetry, messages.length]);
+  }, [isStreaming, activeAssistantMessageId, handleRetry]);
 
   if (isLoading) {
     return (
