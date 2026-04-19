@@ -58,8 +58,7 @@ export const Base: React.FC<BaseProps> = ({
         <CChip
           label="Upgrade"
           onPress={onUpgradePress}
-          variant="filled"
-          style={[styles.upgradeChip, upgradeChipStyle]}
+          variant='outlined'
         />
       )}
 

@@ -1,10 +1,11 @@
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { View, Text } from "react-native";
-import { ThemeProvider } from "./theme/ThemeProvider";
+import { View, Text, ActivityIndicator, AppState, AppStateStatus } from "react-native";
+import { ThemeProvider, useTheme } from "./theme/ThemeProvider";
 import { ComponentShowcase } from "./presentation/components/ComponentShowcase";
 import { ChatScreen } from "./presentation/screens/ChatScreen";
+import { ServerHealthCheck } from "./presentation/components/molecules/ServerHealthCheck";
 
 const Stack = createNativeStackNavigator();
 
@@ -45,12 +46,16 @@ const RootStack = () => (
   </Stack.Navigator>
 );
 
+
+
 const App = () => (
   <ThemeProvider>
     <SafeAreaProvider>
-      <NavigationContainer>
-        <RootStack />
-      </NavigationContainer>
+      <ServerHealthCheck>
+        <NavigationContainer>
+          <RootStack />
+        </NavigationContainer>
+      </ServerHealthCheck>
     </SafeAreaProvider>
   </ThemeProvider>
 );
