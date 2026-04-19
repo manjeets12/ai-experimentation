@@ -3,8 +3,10 @@ import { Vibration } from "react-native";
 import { CONFIG } from "@config";
 import { useTextBuffer } from "./useTextBuffer";
 import type { ChatMessage, StreamState } from "../types";
+import { appEventEmitter } from "@/utils/eventEmitter";
 
 const WS_URL = CONFIG.WS_URL;
+const SCROLL_THRESHOLD_CHARS = 20;
 
 function getLocalId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -28,6 +30,7 @@ export const useChatSocket = (url: string = WS_URL) => {
   } = useTextBuffer(setMessages);
 
   const ws = useRef<WebSocket | null>(null);
+  const charsSinceLastScroll = useRef(0);
 
   useEffect(() => {
     setConnectionError(null);
@@ -58,6 +61,12 @@ export const useChatSocket = (url: string = WS_URL) => {
           case "chunk": {
             append(message.data);
 
+            charsSinceLastScroll.current += message.data.length;
+            if (charsSinceLastScroll.current > SCROLL_THRESHOLD_CHARS) {
+              appEventEmitter.emit('scroll_for_new_chat');
+              charsSinceLastScroll.current = 0;
+            }
+
             setStreamState((prev) => {
               if (prev.phase === "idle") return prev;
               if (prev.phase === "streaming") return prev;
@@ -75,6 +84,8 @@ export const useChatSocket = (url: string = WS_URL) => {
             flushNow();
             setStreamState({ phase: "idle" });
             Vibration.vibrate(50);
+            appEventEmitter.emit('scroll_for_new_chat');
+            charsSinceLastScroll.current = 0;
             break;
           }
 
@@ -134,6 +145,8 @@ export const useChatSocket = (url: string = WS_URL) => {
           },
         ]);
       }
+
+      charsSinceLastScroll.current = 0;
 
       const assistantMessageId = createAssistantPlaceholder();
 

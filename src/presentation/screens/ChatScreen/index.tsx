@@ -31,7 +31,6 @@ export const ChatScreen = () => {
     flatListRef,
     activeAssistantMessageId,
     isStreaming,
-    onContentSizeChange,
     onListScroll,
     isThinking,
     isBusy,
@@ -43,10 +42,8 @@ export const ChatScreen = () => {
     isDrawerOpen,
     openDrawer,
     closeDrawer,
-    conversations,
-    isFetchingConversations,
-    switchConversation,
-    conversationId
+    showScrollToBottom,
+    scrollToBottom
   } = useChatLogics({});
 
   const renderListFooter = useCallback(() => {
@@ -77,11 +74,11 @@ export const ChatScreen = () => {
 
   const renderItem = useCallback(({ item, index }: { item: ChatMessage, index: number }) => {
     return (
-      <ChatItem 
-        {...item} 
-        isStreaming={isStreaming} 
-        activeAssistantMessageId={activeAssistantMessageId} 
-        onRetry={handleRetry} 
+      <ChatItem
+        {...item}
+        isStreaming={isStreaming}
+        activeAssistantMessageId={activeAssistantMessageId}
+        onRetry={handleRetry}
         isLastMessage={index === messages.length - 1}
       />
     );
@@ -136,11 +133,11 @@ export const ChatScreen = () => {
         renderItem={renderItem}
         ListFooterComponent={renderListFooter}
         ListEmptyComponent={renderEmptyState}
+        ItemSeparatorComponent={Separator}
         contentContainerStyle={[styles.chatList, messages.length === 0 && { flexGrow: 1 }]}
-        onContentSizeChange={onContentSizeChange}
-        //onScroll={onListScroll}
-        onScrollBeginDrag={onListScroll}
-        onScrollEndDrag={onListScroll}
+        //onContentSizeChange={onContentSizeChange}
+        onScroll={onListScroll}
+        scrollEventThrottle={16}
       />
 
       {/* Input Bar */}
@@ -149,6 +146,18 @@ export const ChatScreen = () => {
         keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
         style={styles.inputBarContainer}
       >
+        {showScrollToBottom && (
+          <View style={styles.scrollToBottomContainer}>
+            <CIconButton
+              iconName="arrow-down"
+              variant="ghost"
+              iconColor="textPrimary"
+              size={24}
+              onPress={scrollToBottom}
+              style={{ padding: 8 }}
+            />
+          </View>
+        )}
         <View style={styles.inputRow}>
           <CIconButton iconName="add" variant="ghost" size={24} />
 
@@ -187,3 +196,5 @@ export const ChatScreen = () => {
     </SafeAreaView>
   );
 };
+
+const Separator = () => <View style={{ height: 16 }} />;

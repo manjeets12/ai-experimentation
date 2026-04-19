@@ -3,6 +3,7 @@ import { FlatList, NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 import { useChatSocket } from "./useChatSocket";
 import chatService from "@/services/network/chatService";
 import type { ChatMessage, Conversation } from "../types";
+import { appEventEmitter } from "@/utils/eventEmitter";
 
 type UseChatLogicsProps = {
     conversationId?: string;
@@ -19,9 +20,13 @@ const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [isFetchingConversations, setIsFetchingConversations] = useState(false);
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
     const flatListRef = useRef<FlatList>(null);
     const distanceFromBottom = useRef<number>(0);
+    const isUserScrolledUp = useRef(false);
+    const isAutoScrolling = useRef(false);
+    const autoScrollTimeout = useRef<NodeJS.Timeout | null>(null);
 
     const {
         messages: liveMessages,
@@ -108,7 +113,7 @@ const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
 
     const isLoading = isFetchingHistory || (!isReady && !connectionError);
     const loadError = fetchError || connectionError;
-    
+
     const retryLoad = useCallback(() => {
         if (fetchError && conversationId) fetchHistory(conversationId);
         if (connectionError) retryConnection();
@@ -135,6 +140,7 @@ const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
             const id = await ensureConversation();
             sendMessage(id, text);
             setInputText("");
+            scrollToBottom();
         } catch (e) {
             console.error("Failed to send message:", e);
         }
@@ -147,18 +153,18 @@ const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
 
     const handleRetry = useCallback(async (assistantMsgId: string) => {
         if (isBusy) return;
-        
+
         const index = messages.findIndex(m => m.id === assistantMsgId);
         if (index <= 0) return;
-        
+
         const prevMsg = messages[index - 1];
         if (prevMsg.role !== "user") return;
-        
+
         const text = prevMsg.text;
-        
+
         // Remove the failed assistant message so we can retry clean
         setMessages(prev => prev.filter(m => m.id !== assistantMsgId));
-        
+
         try {
             const id = await ensureConversation();
             sendMessage(id, text, true);
@@ -167,19 +173,54 @@ const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
         }
     }, [messages, isBusy, ensureConversation, sendMessage]);
 
-    const onContentSizeChange = useCallback(() => {
-        //using 80 here but it could very on different screen as well as keyboard state
-        //we will use it for now
-        if (distanceFromBottom.current < 80) {
-            flatListRef.current?.scrollToEnd({ animated: true })
-        }
-    }, [])
+    const scrollToBottom = useCallback(() => {
+        isUserScrolledUp.current = false;
+        isAutoScrolling.current = true;
+        flatListRef.current?.scrollToEnd({ animated: true });
 
-    const onListScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        if (autoScrollTimeout.current) clearTimeout(autoScrollTimeout.current);
+        autoScrollTimeout.current = setTimeout(() => {
+            isAutoScrolling.current = false;
+        }, 500);
+    }, []);
+
+    useEffect(() => {
+        const handleScrollEvent = () => {
+            if (!isUserScrolledUp.current) {
+                // Give FlatList a tiny bit of time to render the new chunk
+                setTimeout(() => {
+                    onContentSizeChange();
+                }, 100);
+            }
+        };
+
+        appEventEmitter.on('scroll_for_new_chat', handleScrollEvent);
+        return () => {
+            appEventEmitter.off('scroll_for_new_chat', handleScrollEvent);
+        };
+    }, [scrollToBottom]);
+
+    const onContentSizeChange = useCallback(() => {
+        if (!isUserScrolledUp.current) {
+            scrollToBottom();
+        }
+    }, [scrollToBottom])
+
+    const onListScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
         const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-        distanceFromBottom.current =
-            contentSize.height - (contentOffset.y + layoutMeasurement.height);
-    }
+        const distance = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+        distanceFromBottom.current = distance;
+
+        if (distance > 150) {
+            setShowScrollToBottom(prev => prev ? prev : true);
+        } else {
+            setShowScrollToBottom(prev => prev ? false : prev);
+        }
+
+        if (!isAutoScrolling.current) {
+            isUserScrolledUp.current = distance > 80;
+        }
+    }, []);
 
     return {
         messages,
@@ -206,7 +247,9 @@ const useChatLogics = ({ conversationId: initialId }: UseChatLogicsProps) => {
         closeDrawer,
         conversations,
         isFetchingConversations,
-        switchConversation
+        switchConversation,
+        showScrollToBottom,
+        scrollToBottom
     };
 };
 

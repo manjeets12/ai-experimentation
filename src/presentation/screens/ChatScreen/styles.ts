@@ -125,7 +125,22 @@ export const getChatStyles = (colors: ThemeColors) => {
       // Circle inside the pill
     },
     thinkingContainer: {
-      paddingVertical: spacing.sm,
+      //paddingVertical: spacing.sm,
+    },
+    scrollToBottomContainer: {
+      position: 'absolute',
+      top: -55,
+      alignSelf: 'center',
+      zIndex: 10,
+      backgroundColor: colors.background,
+      borderRadius: 30,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
     }
   });
 };
